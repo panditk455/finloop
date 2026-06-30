@@ -1,0 +1,725 @@
+<title>FinLoop: Self-Improving Financial Analysis Agent</title>
+<meta name="description" content="Portfolio project: an agentic loop that iteratively improves a financial document analysis prompt using three collaborating AI agents.">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F2F5F8;
+    --surface: #FFFFFF;
+    --text: #0F1929;
+    --text-2: #4A5568;
+    --text-3: #9CA3AF;
+    --accent: #0B6B52;
+    --accent-light: #EBF6F2;
+    --score-hi: #047857;
+    --score-lo: #B45309;
+    --score-hi-bg: #D1FAE5;
+    --score-lo-bg: #FEF3C7;
+    --border: #DDE3EA;
+    --code-bg: #EEF2F7;
+    --page: 800px;
+    --r: 5px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  .page {
+    max-width: var(--page);
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+
+  /* ── HEADER ── */
+  .hd {
+    background: var(--accent);
+    padding: 3rem 3.5rem 2.25rem;
+    color: #fff;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 1.1rem;
+  }
+
+  .hd h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  .hd .sub {
+    font-size: 1.05rem;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 2.25rem;
+    font-weight: 400;
+  }
+
+  .stats {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.18);
+  }
+
+  .stat-val {
+    display: block;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-lbl {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-top: 0.15rem;
+  }
+
+  /* ── BODY ── */
+  .body { padding: 3rem 3.5rem; }
+
+  section { margin-bottom: 3.25rem; }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin-bottom: 0.9rem;
+  }
+
+  p {
+    color: var(--text-2);
+    max-width: 66ch;
+    margin-bottom: 0.85rem;
+  }
+  p:last-child { margin-bottom: 0; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin-bottom: 3.25rem; }
+
+  /* ── ARCH DIAGRAM ── */
+  .arch {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    background: var(--code-bg);
+    border-radius: var(--r);
+    padding: 1.75rem 2rem;
+    margin-top: 1.25rem;
+    overflow-x: auto;
+  }
+
+  .agent {
+    flex: 1;
+    min-width: 130px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 1rem 0.9rem;
+    text-align: center;
+  }
+
+  .agent.optimizer { border-color: var(--accent); }
+
+  .agent-name {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.35rem;
+  }
+
+  .agent-desc {
+    font-size: 0.76rem;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+
+  .arch-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 0.6rem;
+    color: var(--text-3);
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .arch-note {
+    margin-top: 0.85rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-3);
+  }
+
+  /* ── RESULTS TABLE ── */
+  .table-wrap {
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    margin-top: 1.25rem;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+
+  thead { background: var(--code-bg); }
+
+  th {
+    padding: 0.7rem 1rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr.total { background: var(--code-bg); }
+  tr.total td { font-weight: 700; }
+
+  .sc {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .sc-num {
+    width: 2.4rem;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .sc-track {
+    flex: 1;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .sc-fill { height: 100%; border-radius: 3px; }
+
+  .lo .sc-num { color: var(--score-lo); }
+  .lo .sc-fill { background: var(--score-lo); }
+  .hi .sc-num { color: var(--score-hi); }
+  .hi .sc-fill { background: var(--score-hi); }
+
+  .gain {
+    display: inline-block;
+    padding: 0.18rem 0.42rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--score-hi-bg);
+    color: var(--score-hi);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── PROMPT COMPARE ── */
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+  }
+
+  .pbox {
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .plabel {
+    padding: 0.45rem 0.875rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .plabel-lo { background: var(--score-lo-bg); color: var(--score-lo); }
+  .plabel-hi { background: var(--score-hi-bg); color: var(--score-hi); }
+
+  .ptext {
+    padding: 0.85rem 0.875rem;
+    font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+    font-size: 0.76rem;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--code-bg);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── OBSERVE GRID ── */
+  .obs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 0.7rem;
+    margin-top: 1.25rem;
+  }
+
+  .obs-item {
+    background: var(--code-bg);
+    border-radius: var(--r);
+    padding: 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-2);
+  }
+
+  .obs-item strong {
+    display: block;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+    font-size: 0.82rem;
+  }
+
+  /* ── VESTMARK GRID ── */
+  .vg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+    margin-top: 1.25rem;
+  }
+
+  .vi {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--r) var(--r) 0;
+    padding: 0.85rem 1rem;
+  }
+
+  .vi h3 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.3rem;
+  }
+
+  .vi p {
+    font-size: 0.8rem;
+    margin: 0;
+    max-width: none;
+    color: var(--text-2);
+  }
+
+  /* ── CODE BLOCK ── */
+  .cb {
+    background: #151C2B;
+    border-radius: var(--r);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+    overflow-x: auto;
+  }
+
+  .cb pre {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.75;
+    color: #CBD5E1;
+    white-space: pre;
+  }
+
+  .ck { color: #7DD3FC; }
+  .cs { color: #86EFAC; }
+  .cc { color: #475569; }
+  .cv { color: #FCD34D; }
+
+  /* ── FOOTER ── */
+  .ft {
+    border-top: 1px solid var(--border);
+    padding: 1.25rem 3.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--text-3);
+  }
+
+  @media (max-width: 600px) {
+    .hd, .body { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .prompt-grid, .vg { grid-template-columns: 1fr; }
+    .arch { flex-direction: column; gap: 0.5rem; }
+    .arch-arrow { transform: rotate(90deg); align-self: center; }
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { box-shadow: none; border: none; border-radius: 0; }
+    .cb { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .hd { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hd">
+    <span class="badge">Portfolio Project · Agentic Systems</span>
+    <h1>FinLoop</h1>
+    <p class="sub">A self-improving financial document analysis agent</p>
+    <div class="stats">
+      <div><span class="stat-val">3</span><span class="stat-lbl">Collaborating Agents</span></div>
+      <div><span class="stat-val">44 → 96</span><span class="stat-lbl">Score in One Cycle</span></div>
+      <div><span class="stat-val">+118%</span><span class="stat-lbl">Quality Gain</span></div>
+      <div><span class="stat-val">~$0.50</span><span class="stat-lbl">Cost per Full Run</span></div>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- ORIGIN STORY -->
+    <section style="margin-bottom:3.25rem;">
+      <div class="eyebrow">Where This Started</div>
+      <h2>A tweet, a conversation, and a question worth building an answer to</h2>
+
+      <!-- Who Mitchell is -->
+      <p>In May 2026, Mitchell Hashimoto posted something that stuck. Mitchell is the co-founder of HashiCorp (makers of Terraform and Vault) and the creator of Ghostty, a GPU-accelerated terminal emulator known for its extreme performance. He is one of the more rigorous systems thinkers building in public. When he says something is broken, it is worth reading carefully.</p>
+
+      <!-- Tweet card -->
+      <div style="border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.4rem;margin:1.25rem 0;background:#fff;max-width:600px;">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.85rem;">
+          <div style="width:40px;height:40px;border-radius:50%;background:#0F1929;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.85rem;flex-shrink:0;">MH</div>
+          <div>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--text);">Mitchell Hashimoto</div>
+            <div style="font-size:0.78rem;color:var(--text-3);">@mitchellh</div>
+          </div>
+        </div>
+        <p style="font-size:0.88rem;line-height:1.6;color:var(--text);max-width:none;margin-bottom:0.85rem;">I've got an agent in a loop optimizing a renderer with the goal to minimize frame times. It got times down from 88ms to 2ms. Sounds good, right? <strong>Wrong.</strong> This is exactly why agent psychosis is a big problem.</p>
+        <p style="font-size:0.88rem;line-height:1.6;color:var(--text);max-width:none;margin-bottom:0.85rem;">My hand-written renderer has frame times of ~20us (0.020ms) and 0 allocations. The agent got 75x worse than what a human who understands the system writes immediately.</p>
+        <p style="font-size:0.88rem;line-height:1.6;color:var(--text);max-width:none;margin-bottom:1rem;font-style:italic;">"The people who blindly trust agent output are sheeple, overdrinking from a fountain of mediocrity. The point: do not blindly accept results. Think. Analyze. Learn."</p>
+        <div style="font-size:0.75rem;color:var(--text-3);padding-top:0.85rem;border-top:1px solid var(--border);">May 28, 2026 · 798.2K views</div>
+      </div>
+
+      <p>The post landed because it named something real: a loop that produces impressive-looking numbers is not the same as a loop that produces good results. The agent got 95x better. A person who understood the system got 75x better still. The gap is not a failure of the loop pattern. It is a failure of what the loop is optimizing for, and who designed the evaluation.</p>
+
+      <!-- Conversation -->
+      <div style="margin-top:1.5rem;margin-bottom:0.5rem;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-3);">The conversation that followed</div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:560px;">
+
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.72rem;flex-shrink:0;margin-top:0.1rem;">KP</div>
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;">Kritika Pandit</div>
+            <div style="background:var(--accent-light);border:1px solid #C6E8DE;border-radius:0 8px 8px 8px;padding:0.75rem 1rem;font-size:0.875rem;color:var(--text);line-height:1.55;">
+              Here's your monthly reminder that you shouldn't be prompting coding agents anymore.<br><br>
+              <strong>You should be designing loops that prompt your agents.</strong><br><br>
+              The issue isn't that Mitchell's loop failed. It's that nobody designed a judge that knew what optimal looked like. The loop optimized for the metric it was given. The metric was wrong.
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;align-self:flex-end;flex-direction:row-reverse;max-width:90%;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#64748B;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.72rem;flex-shrink:0;margin-top:0.1rem;">R</div>
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;text-align:right;">Raaid</div>
+            <div style="background:var(--code-bg);border:1px solid var(--border);border-radius:8px 0 8px 8px;padding:0.75rem 1rem;font-size:0.875rem;color:var(--text);line-height:1.55;">
+              Wait, so the fix isn't better agents, it's a smarter evaluation? That's actually a different problem entirely. Are you building something?
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.72rem;flex-shrink:0;margin-top:0.1rem;">KP</div>
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;">Kritika Pandit</div>
+            <div style="background:var(--accent-light);border:1px solid #C6E8DE;border-radius:0 8px 8px 8px;padding:0.75rem 1rem;font-size:0.875rem;color:var(--text);line-height:1.55;">
+              Yes. Applied to financial document analysis. The rest of this doc is what I built.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">The Problem</div>
+      <h2>AI tools fail silently. This one fixes itself</h2>
+      <p>A wealth manager asking an AI to analyze a 10-K filing needs specific data: dollar amounts, contract dates, risk ceilings, competitive metrics. A generic prompt produces plausible but non-actionable answers. Most teams fix this by manually writing better prompts, a slow, human-in-the-loop process.</p>
+      <p>FinLoop removes the human from that loop. It runs a judge that scores the agent's answers, identifies what failed, and rewrites the extraction prompt, iteratively, automatically, with full observability into every decision made.</p>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Architecture</div>
+      <h2>Three agents, one loop</h2>
+      <div class="arch">
+        <div class="agent">
+          <span class="agent-name">Extractor</span>
+          <span class="agent-desc">Answers wealth-manager questions using the current prompt</span>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="agent">
+          <span class="agent-name">Judge</span>
+          <span class="agent-desc">Scores each answer: specificity, completeness, accuracy, utility (0–100)</span>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="agent optimizer">
+          <span class="agent-name">Optimizer</span>
+          <span class="agent-desc">Analyzes failure patterns, rewrites the extraction prompt</span>
+        </div>
+        <div class="arch-arrow" style="color: var(--accent); font-weight:700;">↰</div>
+      </div>
+      <p class="arch-note">Loop repeats until average score ≥ 88/100 or max iterations reached</p>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Live Results</div>
+      <h2>Scored on a synthetic WealthTech Corp 10-K excerpt</h2>
+      <p>Three questions a wealth manager would ask. Each answer scored by the judge agent on four dimensions (0–25 each). The optimizer ran once; all three questions exceeded the 88/100 target.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Iteration 0 (baseline)</th>
+              <th>Iteration 1 (optimized)</th>
+              <th>Gain</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Top 3 revenue risk factors</td>
+              <td><div class="sc lo"><span class="sc-num">47</span><div class="sc-track"><div class="sc-fill" style="width:47%"></div></div></div></td>
+              <td><div class="sc hi"><span class="sc-num">94</span><div class="sc-track"><div class="sc-fill" style="width:94%"></div></div></div></td>
+              <td><span class="gain">+47</span></td>
+            </tr>
+            <tr>
+              <td>FY2025 revenue guidance</td>
+              <td><div class="sc lo"><span class="sc-num">36</span><div class="sc-track"><div class="sc-fill" style="width:36%"></div></div></div></td>
+              <td><div class="sc hi"><span class="sc-num">98</span><div class="sc-track"><div class="sc-fill" style="width:98%"></div></div></div></td>
+              <td><span class="gain">+62</span></td>
+            </tr>
+            <tr>
+              <td>Competitive advantages &amp; defensibility</td>
+              <td><div class="sc lo"><span class="sc-num">51</span><div class="sc-track"><div class="sc-fill" style="width:51%"></div></div></div></td>
+              <td><div class="sc hi"><span class="sc-num">97</span><div class="sc-track"><div class="sc-fill" style="width:97%"></div></div></div></td>
+              <td><span class="gain">+46</span></td>
+            </tr>
+            <tr class="total">
+              <td style="font-size:0.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2)">Average</td>
+              <td><div class="sc lo"><span class="sc-num">44.7</span><div class="sc-track"><div class="sc-fill" style="width:44.7%"></div></div></div></td>
+              <td><div class="sc hi"><span class="sc-num">96.3</span><div class="sc-track"><div class="sc-fill" style="width:96.3%"></div></div></div></td>
+              <td><span class="gain">+51.6 pts</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Self-Improvement in Practice</div>
+      <h2>The prompt the agent rewrote for itself</h2>
+      <p>The starting prompt is intentionally weak. The optimizer analyzes failure patterns (missing specificity, incomplete coverage, non-actionable framing) and produces a structured analyst persona with explicit output requirements. No human edited the prompt between iterations.</p>
+      <div class="prompt-grid">
+        <div class="pbox">
+          <div class="plabel plabel-lo">v0: Baseline (44.7/100)</div>
+          <div class="ptext">You are a helpful assistant. Answer questions about financial documents.</div>
+        </div>
+        <div class="pbox">
+          <div class="plabel plabel-hi">v1: Optimizer Output (96.3/100)</div>
+          <div class="ptext">You are an expert financial analyst briefing institutional wealth managers. For every answer:
+1. Cite specific data: dollar amounts, %, dates, company names
+2. Cover all material sub-points, not just categories
+3. For risks: state the specific financial exposure and timeline
+4. For guidance: quote the exact range and all contingencies
+5. For competitive advantages: rate defensibility with evidence and name specific threats
+6. Keep answers under 150 words using numbered points
+7. Close with one sentence: the investment implication</div>
+        </div>
+      </div>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Observability</div>
+      <h2>Every iteration is fully logged</h2>
+      <p>The tracker writes <code style="font-family:monospace;font-size:0.85em;background:var(--code-bg);padding:0.1em 0.3em;border-radius:3px">output/history.json</code> after each run, the complete optimization arc, reproducible from any iteration.</p>
+      <div class="obs-grid">
+        <div class="obs-item"><strong>Prompt versions</strong>Complete text of every prompt tried</div>
+        <div class="obs-item"><strong>Score breakdown</strong>All 4 dimensions per question per iteration</div>
+        <div class="obs-item"><strong>Judge feedback</strong>Natural language explanation of every score</div>
+        <div class="obs-item"><strong>Token accounting</strong>Input + output tokens per agent call</div>
+        <div class="obs-item"><strong>Cost tracking</strong>Cumulative USD cost across the full run</div>
+        <div class="obs-item"><strong>Answer history</strong>Full text of every answer at every iteration</div>
+      </div>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">The Idea</div>
+      <h2>Agents that know how to improve themselves</h2>
+      <p>Most AI deployments treat the prompt as a fixed artifact, something a human engineer writes once and maintains manually. The core insight behind FinLoop is different: <strong style="color:var(--text)">the evaluation signal that tells you an answer is bad is itself a learnable resource.</strong> If an agent can score its own output, it can also use that score to rewrite the instructions that produced the output.</p>
+      <p>This creates a self-closing loop. The agent isn't just executing a task; it's continuously improving its own strategy for executing the task, using its own judgment as the teacher. No labelled training data. No human prompt engineering between iterations. Just a measurable goal and a loop that runs until it's met.</p>
+      <p>The analogy is a senior engineer doing a code review and then fixing the architecture that produced the bad code, not just patching the symptoms. The difference is the agent does this autonomously, in seconds, at the cost of a few API calls.</p>
+
+      <div style="background:var(--code-bg);border-radius:var(--r);padding:1.5rem 1.75rem;margin-top:1.25rem;">
+        <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;">The Loop Pattern</div>
+        <div style="display:flex;flex-direction:column;gap:0.6rem;">
+          <div style="display:flex;align-items:flex-start;gap:0.85rem;">
+            <div style="width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:0.1rem;">1</div>
+            <div><strong style="font-size:0.875rem;">Execute</strong>: Run the agent on the task with the current strategy</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:0.85rem;">
+            <div style="width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:0.1rem;">2</div>
+            <div><strong style="font-size:0.875rem;">Evaluate</strong>: A judge agent scores the output against a rubric</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:0.85rem;">
+            <div style="width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:0.1rem;">3</div>
+            <div><strong style="font-size:0.875rem;">Optimize</strong>: An optimizer agent rewrites the strategy based on failures</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:0.85rem;">
+            <div style="width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:0.1rem;">4</div>
+            <div><strong style="font-size:0.875rem;">Repeat</strong>: Until quality target is met, cost ceiling hit, or improvement plateaus</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:0.8rem;color:var(--text-2);">The same pattern generalizes to any task where you can define what "good" looks like. The judge is the key: if you can score it, you can loop it.</div>
+      </div>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Applications in Wealth Management</div>
+      <h2>Where self-improving loops change the economics</h2>
+      <p>Vestmark manages infrastructure for $2T+ in assets and 5M+ accounts. At that scale, the difference between a prompt that extracts good insights and one that misses material data compounds across thousands of advisors and millions of decisions. Self-improving loops are most valuable wherever the task is repeated, the quality signal is measurable, and manual prompt maintenance doesn't scale.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-top:1.25rem;">
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">10-K / Earnings Analysis</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Optimize the prompt that extracts risk factors, guidance, and competitive signals from filings, at scale across every holding in a portfolio, not just the largest names.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">Client Report Generation</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Financial advisors send hundreds of portfolio review letters. A loop improves the generation prompt until reports are specific, compliant, and advisor-approved, without per-report human editing.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">Rebalancing Rationale</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Regulators require documented rationale for every trade. A loop optimizes the explanation agent until generated rationales consistently pass compliance review, reducing reviewer load at scale.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">Risk Flag Classification</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Classify portfolio anomalies as risk events or noise. A loop optimizes the classification prompt against historical labelled outcomes, improving precision without retraining a model.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">RFP Response Quality</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Enterprise RFPs require precise, defensible answers. A loop scores draft responses against evaluation criteria and refines the generation strategy until responses consistently win reviewer approval.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">Regulatory Change Monitoring</div>
+          <p style="font-size:0.82rem;max-width:none;margin:0;">Monitor SEC/FINRA rulemaking documents for client impact. A loop improves the impact-extraction prompt as new rule types emerge, without manual re-engineering after each regulatory change.</p>
+        </div>
+      </div>
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--text-3)">Common thread: each of these tasks is high-stakes, repeatable, and has a measurable quality signal. That's the precondition for a self-improving loop to replace manual prompt maintenance.</p>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">The Proposal</div>
+      <h2>Loops should be infrastructure, not experiments</h2>
+      <p>Most AI deployed in production today is static. An engineer writes a prompt, it works well enough, and it stays that way until someone notices it's degrading or the task changes. The loop is treated as a one-time setup problem, not an ongoing system.</p>
+      <p>My proposal is a different framing: <strong style="color:var(--text)">the evaluation signal is the most valuable artifact you produce, more valuable than the answer itself.</strong> If you can score an output, and in most real-world tasks, you can define what good looks like, then you can loop. And if you can loop, the system improves itself automatically, without a human rewriting prompts after every edge case.</p>
+      <p>This shifts the engineer's job. Instead of writing better prompts, you design better evaluation rubrics. Instead of debugging bad outputs, you tune the feedback signal. The loop does the rest.</p>
+
+      <div style="background:var(--code-bg);border-radius:var(--r);padding:1.5rem 1.75rem;margin-top:1.25rem;margin-bottom:1.25rem;">
+        <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem;">What changes when loops are infrastructure</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem 2rem;">
+          <div style="font-size:0.82rem;color:var(--text-2);padding-bottom:0.6rem;border-bottom:1px solid var(--border)"><span style="color:var(--score-lo);font-weight:600;">Static deployment:</span> prompt written once, maintained manually, degrades silently</div>
+          <div style="font-size:0.82rem;color:var(--text-2);padding-bottom:0.6rem;border-bottom:1px solid var(--border)"><span style="color:var(--score-hi);font-weight:600;">Loop as infrastructure:</span> system continuously evaluates and improves its own strategy</div>
+          <div style="font-size:0.82rem;color:var(--text-2);padding-bottom:0.6rem;border-bottom:1px solid var(--border)"><span style="color:var(--score-lo);font-weight:600;">Human in the loop:</span> engineer reviews bad outputs, edits prompt, redeploys</div>
+          <div style="font-size:0.82rem;color:var(--text-2);padding-bottom:0.6rem;border-bottom:1px solid var(--border)"><span style="color:var(--score-hi);font-weight:600;">Rubric in the loop:</span> judge agent flags failures, optimizer rewrites root cause</div>
+          <div style="font-size:0.82rem;color:var(--text-2)"><span style="color:var(--score-lo);font-weight:600;">Scales with headcount:</span> more edge cases = more engineer time</div>
+          <div style="font-size:0.82rem;color:var(--text-2)"><span style="color:var(--score-hi);font-weight:600;">Scales with compute:</span> more edge cases = more loop iterations</div>
+        </div>
+      </div>
+
+      <p>The constraint is the evaluation rubric. Writing a rubric that accurately captures what "good" means in a given domain is genuinely hard: it requires domain knowledge, clear thinking about edge cases, and iteration of its own. In financial analysis, "good" means specific, complete, accurate, and actionable for investment decisions. That four-dimension rubric was the real design work in this project; the loop mechanics are straightforward once the rubric is sound.</p>
+      <p>What I'd explore next: applying the same loop architecture to tasks where the strategy being optimized is not a prompt but a <em>workflow</em>, specifically a sequence of agent steps, tool calls, or routing decisions. The judge evaluates the outcome of the full workflow; the optimizer restructures the steps. That's a harder problem, but the same principle holds: if you can score it, you can loop it.</p>
+    </section>
+
+    <hr>
+
+    <section>
+      <div class="eyebrow">Quick Start</div>
+      <h2>Run it yourself</h2>
+      <div class="cb">
+        <pre><span class="cc"># Install</span>
+<span class="ck">pip3</span> install anthropic
+
+<span class="cc"># Set your API key</span>
+<span class="ck">export</span> <span class="cv">ANTHROPIC_API_KEY</span>=<span class="cs">sk-ant-...</span>
+
+<span class="cc"># Run the loop  (~$0.50, ~2 minutes)</span>
+<span class="ck">cd</span> finloop
+<span class="ck">python3</span> main.py
+
+<span class="cc"># Inspect the full improvement arc</span>
+<span class="ck">cat</span> output/history.json</pre>
+      </div>
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--text-3)">Stack: Python 3.12 · Anthropic API (claude-opus-4-8) · single dependency beyond stdlib</p>
+    </section>
+
+  </div>
+
+  <footer class="ft">
+    <span>FinLoop · Agentic Systems Portfolio Project</span>
+    <span>Kritika Pandit · 2026</span>
+  </footer>
+
+</div>
