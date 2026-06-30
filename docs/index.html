@@ -405,9 +405,9 @@
     <p class="sub">A self-improving financial document analysis agent</p>
     <div class="stats">
       <div><span class="stat-val">3</span><span class="stat-lbl">Collaborating Agents</span></div>
-      <div><span class="stat-val">44 → 96</span><span class="stat-lbl">Score in One Cycle</span></div>
-      <div><span class="stat-val">+118%</span><span class="stat-lbl">Quality Gain</span></div>
-      <div><span class="stat-val">~$0.50</span><span class="stat-lbl">Cost per Full Run</span></div>
+      <div><span class="stat-val">91.7 / 100</span><span class="stat-lbl">Baseline Score</span></div>
+      <div><span class="stat-val">88 / 100</span><span class="stat-lbl">Target, Hit at Iter 0</span></div>
+      <div><span class="stat-val">$0.23</span><span class="stat-lbl">Cost per Run</span></div>
     </div>
   </header>
 
@@ -515,43 +515,39 @@
 
     <section>
       <div class="eyebrow">Live Results</div>
-      <h2>Scored on a synthetic WealthTech Corp 10-K excerpt</h2>
-      <p>Three questions a wealth manager would ask. Each answer scored by the judge agent on four dimensions (0–25 each). The optimizer ran once; all three questions exceeded the 88/100 target.</p>
+      <h2>Real run: WealthTech Corp 10-K excerpt</h2>
+      <p>Three questions a wealth manager would ask. Each answer scored by the judge agent on four dimensions (0–25 each). The baseline prompt ("You are a helpful assistant.") scored 91.7/100, exceeding the 88/100 target immediately. The loop correctly stopped after iteration 0. No human intervened.</p>
+      <p style="font-size:0.83rem;background:var(--accent-light);border-left:3px solid var(--accent);padding:0.65rem 0.85rem;border-radius:0 var(--r) var(--r) 0;max-width:none;">The unexpected finding: Claude Opus is already a strong analyst even with a minimal prompt. The judge still caught two real quality issues (answers truncated mid-sentence due to a token limit), demonstrating that the evaluation layer surfaces problems the score alone does not.</p>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Question</th>
-              <th>Iteration 0 (baseline)</th>
-              <th>Iteration 1 (optimized)</th>
-              <th>Gain</th>
+              <th>Score</th>
+              <th>Judge feedback</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Top 3 revenue risk factors</td>
-              <td><div class="sc lo"><span class="sc-num">47</span><div class="sc-track"><div class="sc-fill" style="width:47%"></div></div></div></td>
-              <td><div class="sc hi"><span class="sc-num">94</span><div class="sc-track"><div class="sc-fill" style="width:94%"></div></div></div></td>
-              <td><span class="gain">+47</span></td>
+              <td><div class="sc hi"><span class="sc-num">89</span><div class="sc-track"><div class="sc-fill" style="width:89%"></div></div></div></td>
+              <td style="font-size:0.8rem;color:var(--text-2);">Answer cut off mid-sentence in factor 2; third risk factor omitted entirely due to truncation.</td>
             </tr>
             <tr>
               <td>FY2025 revenue guidance</td>
-              <td><div class="sc lo"><span class="sc-num">36</span><div class="sc-track"><div class="sc-fill" style="width:36%"></div></div></div></td>
               <td><div class="sc hi"><span class="sc-num">98</span><div class="sc-track"><div class="sc-fill" style="width:98%"></div></div></div></td>
-              <td><span class="gain">+62</span></td>
+              <td style="font-size:0.8rem;color:var(--text-2);">Excellent and accurate. Could note 31-33% EBITDA margin context but fully answered the revenue question.</td>
             </tr>
             <tr>
               <td>Competitive advantages &amp; defensibility</td>
-              <td><div class="sc lo"><span class="sc-num">51</span><div class="sc-track"><div class="sc-fill" style="width:51%"></div></div></div></td>
-              <td><div class="sc hi"><span class="sc-num">97</span><div class="sc-track"><div class="sc-fill" style="width:97%"></div></div></div></td>
-              <td><span class="gain">+46</span></td>
+              <td><div class="sc hi"><span class="sc-num">88</span><div class="sc-track"><div class="sc-fill" style="width:88%"></div></div></div></td>
+              <td style="font-size:0.8rem;color:var(--text-2);">Defensibility assessment cut off; failed to address Orion's $120M Series D as key competitive threat.</td>
             </tr>
             <tr class="total">
               <td style="font-size:0.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2)">Average</td>
-              <td><div class="sc lo"><span class="sc-num">44.7</span><div class="sc-track"><div class="sc-fill" style="width:44.7%"></div></div></div></td>
-              <td><div class="sc hi"><span class="sc-num">96.3</span><div class="sc-track"><div class="sc-fill" style="width:96.3%"></div></div></div></td>
-              <td><span class="gain">+51.6 pts</span></td>
+              <td><div class="sc hi"><span class="sc-num">91.7</span><div class="sc-track"><div class="sc-fill" style="width:91.7%"></div></div></div></td>
+              <td style="font-size:0.8rem;color:var(--text-2);">Target 88/100 reached at baseline. Loop stopped. $0.23 · 11,204 tokens.</td>
             </tr>
           </tbody>
         </table>
@@ -561,25 +557,16 @@
     <hr>
 
     <section>
-      <div class="eyebrow">Self-Improvement in Practice</div>
-      <h2>The prompt the agent rewrote for itself</h2>
-      <p>The starting prompt is intentionally weak. The optimizer analyzes failure patterns (missing specificity, incomplete coverage, non-actionable framing) and produces a structured analyst persona with explicit output requirements. No human edited the prompt between iterations.</p>
-      <div class="prompt-grid">
-        <div class="pbox">
-          <div class="plabel plabel-lo">v0: Baseline (44.7/100)</div>
+      <div class="eyebrow">What the Real Run Revealed</div>
+      <h2>The judge catches what the score does not</h2>
+      <p>The baseline prompt scored 91.7/100 overall, which looks strong. But the judge's per-question feedback found two answers cut off mid-sentence due to a max_tokens limit set too low. The score was high enough to stop the loop; the feedback revealed a real engineering problem the aggregate number hid.</p>
+      <p>This is the value of the evaluation layer: not just to produce a number, but to surface specific, actionable failure modes. A score of 89 does not tell you the answer was truncated. The judge's text does.</p>
+      <div style="margin-top:1.25rem;">
+        <div class="pbox" style="max-width:480px;">
+          <div class="plabel plabel-lo">v0: Starting prompt (91.7/100 baseline)</div>
           <div class="ptext">You are a helpful assistant. Answer questions about financial documents.</div>
         </div>
-        <div class="pbox">
-          <div class="plabel plabel-hi">v1: Optimizer Output (96.3/100)</div>
-          <div class="ptext">You are an expert financial analyst briefing institutional wealth managers. For every answer:
-1. Cite specific data: dollar amounts, %, dates, company names
-2. Cover all material sub-points, not just categories
-3. For risks: state the specific financial exposure and timeline
-4. For guidance: quote the exact range and all contingencies
-5. For competitive advantages: rate defensibility with evidence and name specific threats
-6. Keep answers under 150 words using numbered points
-7. Close with one sentence: the investment implication</div>
-        </div>
+        <p style="margin-top:1rem;font-size:0.83rem;color:var(--text-2);max-width:none;">The optimizer did not run because the target was hit at baseline. In a run with a stricter target or a weaker model, it would rewrite this prompt into a structured analyst persona with explicit requirements for data citation, completeness, and investment-actionable framing. The fix identified from this run: increase max_tokens in the extractor from 300 to 600 and re-run.</p>
       </div>
     </section>
 
@@ -705,7 +692,7 @@
 <span class="cc"># Set your API key</span>
 <span class="ck">export</span> <span class="cv">ANTHROPIC_API_KEY</span>=<span class="cs">sk-ant-...</span>
 
-<span class="cc"># Run the loop  (~$0.50, ~2 minutes)</span>
+<span class="cc"># Run the loop  (~$0.23, ~1 minute)</span>
 <span class="ck">cd</span> finloop
 <span class="ck">python3</span> main.py
 
